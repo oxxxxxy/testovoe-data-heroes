@@ -13,7 +13,6 @@
 	
 	const CACHE = {};
 	CACHE.names = {};
-	CACHE.characters = {};
 	CACHE.pathData = {};
 
 
@@ -54,31 +53,31 @@
 			const link = PATH + query;
 
 			if(!CACHE.pathData[link]){
+
+				
 				const response = await fetch(link);
-	
+		
 				const json = await response.json();
-	
+			
+				for(const character of json.results){
+					for(let i = 0; i < character.episode.length; i++){
+						const episodeUrl = character.episode[i];
+						const episode = {};
 
-				for(let i = 0; i < json.results.length; i++){
-					const character = json.results[i];
-
-					if(!CACHE.characters[character.id]){
-						CACHE.characters[character.id] = character;
-
-						for(let k = 0; k < character.episode.length; k++){
-							const res = await fetch(character.episode[k]);
+						if(!CACHE.names[episodeUrl]){
+							const res = await fetch(episodeUrl);
 							const json = await res.json();
-							
-							character.episode[k] = {
-								name: json.name,
-								url: character.episode[k]
-							};
+
+							CACHE.names[episodeUrl] = json.name;
 						}
-					} else {
-						json.results[i] = CACHE.characters[character.id];
+
+						episode.name = CACHE.names[episodeUrl];
+						episode.url = episodeUrl;
+
+						character.episode[i] = episode;
+
 					}
 				}
-
 
 				CACHE.pathData[link] = {};
 
@@ -89,16 +88,19 @@
 					selected: STATE.paginationValues.value.selected
 				};
 
+
 				CACHE.pathData[link].results = json.results;
-			
+
 				STATE.characters.value = json.results;
+
 			} else {
+
 				STATE.paginationValues.value = {
 					pages: CACHE.pathData[link].pages,
 					selected: STATE.paginationValues.value.selected
 				};
 
-				STATE.characters.value = CACHE.pathData[link].results;
+				STATE.characters.value = structuredClone(CACHE.pathData[link].results);
 			}
 
 			ready.value = true;
