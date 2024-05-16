@@ -1,13 +1,18 @@
 <script setup>
-	import { ref } from 'vue';
+	import { ref, onMounted } from 'vue';
 
 	import Filter from './components/Filter.vue';
 	import Pagination from './components/Pagination.vue';
+	import CharacterTile from './components/CharacterTile.vue';
 
 	const STATE = {};
 	STATE.paginationValues = ref({});
+	STATE.characters = ref([]);
+	
+	const ready = ref();
+	
+	const cachedNames = {};
 
-	function log(...args){console.log('log', ...args)}
 
 	const getSearchParams = () => {
 		let obj = {};
@@ -29,43 +34,86 @@
 	}
 
 	const updateCharacters = async () => {
+		ready.value = false;
+
 		const params = getSearchParams();
 
-		
+		const PATH = 'https://rickandmortyapi.com/api/character/';
 
-		log('upCha', STATE, params + '')
+		let query = '?' + params;
+	
+		if(query.length === 1){
+			query = '';
+		}
+
+		try{
+			const response = await fetch(PATH + query);
+		
+			const json = await response.json();
+
+
+			for(const character of json.results){
+				for(let i = 0; i < character.episode.length; i++){
+					const episodeUrl = character.episode[i];
+					const episode = {};
+
+					if(!cachedNames[episodeUrl]){
+						const res = await fetch(episodeUrl);
+						const json = await res.json();
+
+						cachedNames[episodeUrl] = json.name;
+					}
+
+					episode.name = cachedNames[episodeUrl];
+					episode.url = episodeUrl;
+
+					character.episode[i] = episode;
+
+				}
+			}
+
+			STATE.paginationValues.value = {
+				pages: json.info.pages,
+				selected: STATE.paginationValues.value.selected
+			};
+
+			STATE.characters.value = json.results;
+
+			ready.value = true;
+		} catch (e) {
+			console.error(e);
+			STATE.paginationValues.value = {};
+		}
 	};
 
 	const clearTempAfterFilterChanges = () => {
 		STATE.paginationValues.value = {};
 	}
 
-	const updateAfterChanges = () => {
-		//hashtag navigation
-
-		updateCharacters();
-	}
-
-	const filterApply = obj => (
+	const filterApply = async obj => (
 		STATE.formValues = {...obj},
-		clearTempAfterFilterChanges(), //hueva
-		updateAfterChanges()
+		clearTempAfterFilterChanges(), 
+		await updateCharacters()
 	);
 
-setTimeout(()=>{STATE.paginationValues.value = {pages: 7}}, 1000);
-
-	const paginationSelect = selected => (
+	const paginationSelect = async selected => (
 		STATE.paginationValues.value = {
 			selected, pages: STATE.paginationValues.value.pages
 		},
-		updateAfterChanges()
+		await updateCharacters()
 	);
+
+	onMounted(() => {
+		updateCharacters();
+	});
 
 </script>
 
 <template>
 	<Filter @filter-apply="filterApply"/>
-	<Pagination :paginationValues="STATE.paginationValues" @pagination-select="paginationSelect"/>
+	<div v-if="!ready">Loading... or error :3 Check console and network, sweety! </div>
+	<Pagination :active="ready" :paginationValues="STATE.paginationValues" @pagination-select="paginationSelect"/>
+	<CharacterTile :active="ready" :characterList="STATE.characters"/>
 
 </template>
 

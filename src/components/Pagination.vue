@@ -6,12 +6,19 @@
 
 	let pageLength = ref(0);
 	let currentPageRange = ref([]);
+	let ready = true;
 
 	const buttonClick = id => {
+		if(!ready){
+			return;
+		}
+		
 		emit('pagination-select', id);
+
+		ready = false;
 	}
 
-	const calcPageRange = (countOfPages, selectedPage) => {
+	const calcPaginationRange = (countOfPages, selectedPage) => {
 		const buttonViewingLimit = 5;// tolko nechetnie, pj
 		const sideInteger = Math.floor(buttonViewingLimit / 2);
 
@@ -53,14 +60,16 @@
 		const {pages, selected} = obj;
 
 		if(pages && !selected){
-			currentPageRange.value = calcPageRange(pages, 1);
+			currentPageRange.value = calcPaginationRange(pages, 1);
 			pageLength.value = pages;
 		} else if (pages && selected){
-			currentPageRange.value = calcPageRange(pages, selected);
+			currentPageRange.value = calcPaginationRange(pages, selected);
 		} else {
 			pageLength.value = 0;
 			currentPageRange.value = [];
 		}
+		
+		ready = true;
 	};
 
 	watch(props.paginationValues, recieveNewPaginationValues);
@@ -81,6 +90,10 @@
 </template>
 
 <style scoped>
+div{
+	height: 50px;
+}
+
 .selected{
 	background-color: rgba(201, 10, 100, 0.4);
 }
