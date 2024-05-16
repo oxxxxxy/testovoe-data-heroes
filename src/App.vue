@@ -12,9 +12,10 @@
 	const ready = ref();
 	
 	const CACHE = {};
-	CACHE.names = {};
+	CACHE.firstEpisodes = {};
 	CACHE.pathData = {};
-
+	CACHE.characters = {};
+	CACHE.episodes = {};
 
 
 	const getSearchParams = () => {
@@ -53,29 +54,37 @@
 			const link = PATH + query;
 
 			if(!CACHE.pathData[link]){
-
 				
 				const response = await fetch(link);
 		
 				const json = await response.json();
 			
-				for(const character of json.results){
-					for(let i = 0; i < character.episode.length; i++){
-						const episodeUrl = character.episode[i];
-						const episode = {};
+				for(let i = 0; i < json.results.length; i++){
+					const character = json.results[i];
 
-						if(!CACHE.names[episodeUrl]){
-							const res = await fetch(episodeUrl);
-							const json = await res.json();
+					if(!CACHE.characters[character.id]){
+						for(let i = 0; i < character.episode.length; i++){
 
-							CACHE.names[episodeUrl] = json.name;
+							const episodeUrl = character.episode[i];
+
+							if(!CACHE.episodes[episodeUrl]){
+								const res = await fetch(episodeUrl);
+								const json = await res.json();
+	
+								CACHE.episodes[episodeUrl] = {
+									name: json.name,
+									url: episodeUrl
+								};
+
+								character.episode[i] = CACHE.episodes[episodeUrl];
+							}else{
+								character.episode[i] = CACHE.episodes[episodeUrl];
+							}
+
+							CACHE.characters[character.id] = character;
 						}
-
-						episode.name = CACHE.names[episodeUrl];
-						episode.url = episodeUrl;
-
-						character.episode[i] = episode;
-
+					} else {
+						json.results[i] = CACHE.characters[character.id];
 					}
 				}
 
