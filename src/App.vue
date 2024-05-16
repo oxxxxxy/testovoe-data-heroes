@@ -15,6 +15,7 @@
 	CACHE.names = {};
 	CACHE.pathData = {};
 
+
 	const getSearchParams = () => {
 		let obj = {};
 
