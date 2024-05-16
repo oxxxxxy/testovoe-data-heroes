@@ -11,7 +11,9 @@
 	
 	const ready = ref();
 	
-	const cachedNames = {};
+	const CACHE = {};
+	CACHE.names = {};
+	CACHE.pathData = {};
 
 
 	const getSearchParams = () => {
@@ -47,37 +49,58 @@
 		}
 
 		try{
-			const response = await fetch(PATH + query);
+			const link = PATH + query;
+
+			if(!CACHE.pathData[link]){
+
+				
+				const response = await fetch(link);
 		
-			const json = await response.json();
+				const json = await response.json();
+			
+				for(const character of json.results){
+					for(let i = 0; i < character.episode.length; i++){
+						const episodeUrl = character.episode[i];
+						const episode = {};
 
+						if(!CACHE.names[episodeUrl]){
+							const res = await fetch(episodeUrl);
+							const json = await res.json();
 
-			for(const character of json.results){
-				for(let i = 0; i < character.episode.length; i++){
-					const episodeUrl = character.episode[i];
-					const episode = {};
+							CACHE.names[episodeUrl] = json.name;
+						}
 
-					if(!cachedNames[episodeUrl]){
-						const res = await fetch(episodeUrl);
-						const json = await res.json();
+						episode.name = CACHE.names[episodeUrl];
+						episode.url = episodeUrl;
 
-						cachedNames[episodeUrl] = json.name;
+						character.episode[i] = episode;
+
 					}
-
-					episode.name = cachedNames[episodeUrl];
-					episode.url = episodeUrl;
-
-					character.episode[i] = episode;
-
 				}
+
+				CACHE.pathData[link] = {};
+
+				CACHE.pathData[link].pages = json.info.pages;
+
+				STATE.paginationValues.value = {
+					pages: json.info.pages,
+					selected: STATE.paginationValues.value.selected
+				};
+
+
+				CACHE.pathData[link].results = json.results;
+
+				STATE.characters.value = json.results;
+
+			} else {
+
+				STATE.paginationValues.value = {
+					pages: CACHE.pathData[link].pages,
+					selected: STATE.paginationValues.value.selected
+				};
+
+				STATE.characters.value = structuredClone(CACHE.pathData[link].results);
 			}
-
-			STATE.paginationValues.value = {
-				pages: json.info.pages,
-				selected: STATE.paginationValues.value.selected
-			};
-
-			STATE.characters.value = json.results;
 
 			ready.value = true;
 		} catch (e) {
